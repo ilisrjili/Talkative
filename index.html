@@ -76,7 +76,7 @@
         </div>
     </div>
 
-    <!-- SCREEN 3: MAIN APPLICATION APPLICATION INTERFACE -->
+    <!-- SCREEN 3: MAIN APPLICATION INTERFACE -->
     <div id="screen-app" class="screen hidden" style="padding:0; height:100vh;">
         <div style="width:100%; display:flex; flex-direction:column; height:100%;">
             <header>
@@ -119,15 +119,15 @@
         import { getDatabase, ref, set, get, push, onChildAdded } from "https://gstatic.com";
         import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://gstatic.com";
 
-        // ⚠️ REPLACE THIS OBJECT INSTANTLY WITH YOUR COPIED APP CONFIGURATION KEYS
+        // Pre-filled with your project credentials
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_://firebaseapp.com",
-            databaseURL: "https://YOUR_PROJECT_://firebaseio.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_://appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+          apiKey: "AIzaSyB-i-2uDPZB9I6f5fZjhoFrYQwsWAvpprY",
+          authDomain: "://firebaseapp.com",
+          databaseURL: "https://firebaseio.com",
+          projectId: "talkactive-c1aec",
+          storageBucket: "talkactive-c1aec.firebasestorage.app",
+          messagingSenderId: "1052791753080",
+          appId: "1:1052791753080:web:2155897a7d4bd21d35608d"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -136,9 +136,8 @@
         const storage = getStorage(app);
 
         let currentUser = null; 
-        let activeChatRoomId = "global_cozy_room"; // Fallback demo channel default
+        let activeChatRoomId = "global_cozy_room"; 
 
-        // DOM Element Registrations
         const sAuth = document.getElementById('screen-auth'), sSetup = document.getElementById('screen-setup'), sApp = document.getElementById('screen-app');
         const setupAvatarFile = document.getElementById('setup-avatar-file'), setupAvatarPreview = document.getElementById('setup-avatar-preview');
 
@@ -149,7 +148,6 @@
                 const result = await signInWithPopup(auth, provider);
                 currentUser = result.user;
                 
-                // Inspect whether account baseline settings exist in DB
                 const userSnapshot = await get(ref(db, `users_by_uid/${currentUser.uid}`));
                 if (userSnapshot.exists()) {
                     loadMainApplication(userSnapshot.val().username, userSnapshot.val().avatarUrl);
@@ -172,3 +170,5 @@
         document.getElementById('btn-save-profile').addEventListener('click', async () => {
             const typedUsername = document.getElementById('setup-username').value.trim().toLowerCase();
             if(!typedUsername) return alert("Username required!");
+
+            const usernameCheck = await get(ref(db, `usernames/${typedUsername}`));
