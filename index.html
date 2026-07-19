@@ -21,7 +21,6 @@
         /* Header and Layout */
         header { background-color: var(--bg-chat); padding: 15px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
         .profile-badge { display: flex; align-items: center; gap: 10px; }
-        .avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
         
         /* Main UI Split View */
         #main-app { display: flex; flex: 1; overflow: hidden; }
@@ -33,20 +32,17 @@
         .user-row { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .user-row:hover, .user-row.active { background: var(--bg-chat); }
         
-        /* Messages & Image Rendering */
+        /* Messages Rendering */
         #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
         .message { max-width: 75%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.5; word-wrap: break-word; }
         .sent { background-color: var(--bubble-sent); align-self: flex-end; border-bottom-right-radius: 4px; }
         .received { background-color: var(--bubble-rcvd); align-self: flex-start; border-bottom-left-radius: 4px; }
-        .chat-img { max-width: 100%; max-height: 250px; border-radius: 8px; margin-top: 5px; display: block; }
         
         /* Controls and Buttons */
         footer { display: flex; background-color: var(--bg-chat); padding: 15px; gap: 12px; align-items: center; border-top: 1px solid #334155; }
         input, select { padding: 12px 16px; border: 1px solid #475569; border-radius: 25px; outline: none; background: var(--bg-main); color: var(--text-main); font-size: 0.95rem; }
         input[type="text"] { flex: 1; }
         button { background-color: var(--accent); color: var(--bg-main); border: none; padding: 12px 24px; border-radius: 25px; font-weight: bold; cursor: pointer; }
-        .secondary-btn { background: transparent; color: var(--text-main); border: 1px solid #475569; }
-        .file-label { cursor: pointer; color: var(--accent); padding: 0 10px; font-size: 1.5rem; }
     </style>
 </head>
 <body>
@@ -60,30 +56,23 @@
         </div>
     </div>
 
-    <!-- SCREEN 2: USERNAME & PROFILE PICTURE PROMPT -->
+    <!-- SCREEN 2: USERNAME PROMPT -->
     <div id="screen-setup" class="screen hidden">
         <div class="card">
             <h2>Complete Profile</h2>
             <p style="color:var(--text-muted); margin-bottom:20px;">Claim your unique chat handle.</p>
-            <div style="margin-bottom:15px; position:relative;">
-                <img id="setup-avatar-preview" src="https://placeholder.com" class="avatar" style="width:100px; height:100px; margin-bottom:10px;">
-                <br><label class="secondary-btn" style="padding:5px 15px; border-radius:15px; font-size:0.8rem; cursor:pointer;">
-                    Upload Photo <input type="file" id="setup-avatar-file" accept="image/*" style="display:none;">
-                </label>
-            </div>
             <input type="text" id="setup-username" placeholder="Choose unique username..." style="width:100%; margin-bottom:15px;">
             <button id="btn-save-profile" style="width:100%;">Enter Talkactive</button>
         </div>
     </div>
 
-    <!-- SCREEN 3: MAIN APPLICATION INTERFACE -->
+    <!-- SCREEN 3: MAIN APP INTERFACE -->
     <div id="screen-app" class="screen hidden" style="padding:0; height:100vh;">
         <div style="width:100%; display:flex; flex-direction:column; height:100%;">
             <header>
                 <h2>✨ Talkactive</h2>
                 <div class="profile-badge">
                     <span id="my-display-username" style="font-weight:bold;"></span>
-                    <img id="my-display-avatar" src="" class="avatar">
                 </div>
             </header>
             
@@ -101,9 +90,6 @@
                 <div id="chat-area">
                     <div id="chat-box"><!-- Texts render dynamically --></div>
                     <footer>
-                        <label class="file-label" title="Send Picture">
-                            🖼️ <input type="file" id="chat-image-file" accept="image/*" style="display:none;">
-                        </label>
                         <input type="text" id="msg-input" placeholder="Whisper a cozy text...">
                         <button id="send-btn">Send</button>
                     </footer>
@@ -117,7 +103,6 @@
         import { initializeApp } from "https://gstatic.com";
         import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://gstatic.com";
         import { getDatabase, ref, set, get, push, onChildAdded } from "https://gstatic.com";
-        import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://gstatic.com";
 
         // Pre-filled with your project credentials
         const firebaseConfig = {
@@ -133,13 +118,11 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getDatabase(app);
-        const storage = getStorage(app);
 
         let currentUser = null; 
         let activeChatRoomId = "global_cozy_room"; 
 
         const sAuth = document.getElementById('screen-auth'), sSetup = document.getElementById('screen-setup'), sApp = document.getElementById('screen-app');
-        const setupAvatarFile = document.getElementById('setup-avatar-file'), setupAvatarPreview = document.getElementById('setup-avatar-preview');
 
         // Google Authentication Handle Trigger
         document.getElementById('btn-google-login').addEventListener('click', async () => {
@@ -150,20 +133,12 @@
                 
                 const userSnapshot = await get(ref(db, `users_by_uid/${currentUser.uid}`));
                 if (userSnapshot.exists()) {
-                    loadMainApplication(userSnapshot.val().username, userSnapshot.val().avatarUrl);
+                    loadMainApplication(userSnapshot.val().username);
                 } else {
                     sAuth.classList.add('hidden');
                     sSetup.classList.remove('hidden');
-                    if(currentUser.photoURL) setupAvatarPreview.src = currentUser.photoURL;
                 }
             } catch (err) { alert("Login failed: " + err.message); }
-        });
-
-        // Setup File Handling Pipeline
-        let temporaryAvatarBlob = null;
-        setupAvatarFile.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if(file) { temporaryAvatarBlob = file; setupAvatarPreview.src = URL.createObjectURL(file); }
         });
 
         // Profile Lifecycle Registry Save Process
@@ -172,3 +147,45 @@
             if(!typedUsername) return alert("Username required!");
 
             const usernameCheck = await get(ref(db, `usernames/${typedUsername}`));
+            if(usernameCheck.exists()) return alert("Username already taken by another member!");
+
+            await set(ref(db, `usernames/${typedUsername}`), { uid: currentUser.uid });
+            await set(ref(db, `users_by_uid/${currentUser.uid}`), { username: typedUsername });
+
+            loadMainApplication(typedUsername);
+        });
+
+        // Search and Map Friends Engine
+        document.getElementById('btn-search-user').addEventListener('click', async () => {
+            const targetName = document.getElementById('search-username-input').value.trim().toLowerCase();
+            const snapshot = await get(ref(db, `usernames/${targetName}`));
+            if(!snapshot.exists()) return alert("User handle not found!");
+            
+            const targetData = snapshot.val();
+            appendFriendRow(targetName, targetData.uid);
+            document.getElementById('search-username-input').value = "";
+        });
+
+        function appendFriendRow(uname, targetUid) {
+            const list = document.getElementById('friends-list');
+            const row = document.createElement('div');
+            row.className = 'user-row';
+            row.innerHTML = `<span>@${uname}</span>`;
+            row.onclick = () => {
+                document.querySelectorAll('.user-row').forEach(r => r.classList.remove('active'));
+                row.classList.add('active');
+                activeChatRoomId = currentUser.uid < targetUid ? `${currentUser.uid}_${targetUid}` : `${targetUid}_${currentUser.uid}`;
+                initializeChatRoomStream();
+            };
+            list.appendChild(row);
+        }
+
+        // Initialize Chat Engine
+        function loadMainApplication(uname) {
+            document.getElementById('my-display-username').innerText = `@${uname}`;
+            sAuth.classList.add('hidden'); sSetup.classList.add('hidden'); sApp.classList.remove('hidden');
+            initializeChatRoomStream();
+        }
+
+        function initializeChatRoomStream() {
+            const chatBox = document.getElementById('chat-box');
