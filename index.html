@@ -12,36 +12,22 @@
             --bubble-sent: #0369a1; --bubble-rcvd: #334155;
         }
         body { display: flex; flex-direction: column; height: 100vh; background-color: var(--bg-main); color: var(--text-main); }
-        
-        /* Auth Screen Modals */
         .screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 20px; padding: 20px; }
         .hidden { display: none !important; }
         .card { background: var(--bg-chat); padding: 30px; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; border: 1px solid #334155; }
-        
-        /* Header and Layout */
         header { background-color: var(--bg-chat); padding: 15px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-        .profile-badge { display: flex; align-items: center; gap: 10px; }
-        
-        /* Main UI Split View */
         #main-app { display: flex; flex: 1; overflow: hidden; }
         #sidebar { width: 300px; background: #111827; border-right: 1px solid #334155; display: flex; flex-direction: column; padding: 15px; gap: 15px; }
         #chat-area { flex: 1; display: flex; flex-direction: column; }
-        
-        /* Interactive List Elements */
         .search-box { display: flex; gap: 8px; }
         .user-row { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .user-row:hover, .user-row.active { background: var(--bg-chat); }
-        
-        /* Messages Rendering */
         #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
         .message { max-width: 75%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.5; word-wrap: break-word; }
         .sent { background-color: var(--bubble-sent); align-self: flex-end; border-bottom-right-radius: 4px; }
         .received { background-color: var(--bubble-rcvd); align-self: flex-start; border-bottom-left-radius: 4px; }
-        
-        /* Controls and Buttons */
         footer { display: flex; background-color: var(--bg-chat); padding: 15px; gap: 12px; align-items: center; border-top: 1px solid #334155; }
-        input, select { padding: 12px 16px; border: 1px solid #475569; border-radius: 25px; outline: none; background: var(--bg-main); color: var(--text-main); font-size: 0.95rem; }
-        input[type="text"] { flex: 1; }
+        input { flex: 1; padding: 12px 16px; border: 1px solid #475569; border-radius: 25px; outline: none; background: var(--bg-main); color: var(--text-main); font-size: 0.95rem; }
         button { background-color: var(--accent); color: var(--bg-main); border: none; padding: 12px 24px; border-radius: 25px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
@@ -66,14 +52,12 @@
         </div>
     </div>
 
-    <!-- SCREEN 3: MAIN APP INTERFACE -->
+    <!-- SCREEN 3: MAIN CHAT DASHBOARD -->
     <div id="screen-app" class="screen hidden" style="padding:0; height:100vh;">
         <div style="width:100%; display:flex; flex-direction:column; height:100%;">
             <header>
                 <h2>✨ Talkactive</h2>
-                <div class="profile-badge">
-                    <span id="my-display-username" style="font-weight:bold;"></span>
-                </div>
+                <div><span id="my-display-username" style="font-weight:bold;"></span></div>
             </header>
             
             <div id="main-app">
@@ -83,12 +67,10 @@
                         <input type="text" id="search-username-input" placeholder="Search username...">
                         <button id="btn-search-user">Add</button>
                     </div>
-                    <div id="friends-list" style="flex:1; overflow-y:auto; margin-top:10px;">
-                        <!-- Connected friends fill in here -->
-                    </div>
+                    <div id="friends-list" style="flex:1; overflow-y:auto; margin-top:10px;"></div>
                 </div>
                 <div id="chat-area">
-                    <div id="chat-box"><!-- Texts render dynamically --></div>
+                    <div id="chat-box"></div>
                     <footer>
                         <input type="text" id="msg-input" placeholder="Whisper a cozy text...">
                         <button id="send-btn">Send</button>
@@ -98,13 +80,12 @@
         </div>
     </div>
 
-    <!-- Firebase SDK Modular Packages Injection -->
+    <!-- Firebase System Modules -->
     <script type="module">
         import { initializeApp } from "https://gstatic.com";
-        import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://gstatic.com";
+        import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "https://gstatic.com";
         import { getDatabase, ref, set, get, push, onChildAdded } from "https://gstatic.com";
 
-        // Pre-filled with your project credentials
         const firebaseConfig = {
           apiKey: "AIzaSyB-i-2uDPZB9I6f5fZjhoFrYQwsWAvpprY",
           authDomain: "://firebaseapp.com",
@@ -124,30 +105,37 @@
 
         const sAuth = document.getElementById('screen-auth'), sSetup = document.getElementById('screen-setup'), sApp = document.getElementById('screen-app');
 
-        // Google Authentication Handle Trigger
-        document.getElementById('btn-google-login').addEventListener('click', async () => {
-            const provider = new GoogleAuthProvider();
+        window.addEventListener('DOMContentLoaded', async () => {
             try {
-                const result = await signInWithPopup(auth, provider);
-                currentUser = result.user;
-                
-                const userSnapshot = await get(ref(db, `users_by_uid/${currentUser.uid}`));
-                if (userSnapshot.exists()) {
-                    loadMainApplication(userSnapshot.val().username);
-                } else {
-                    sAuth.classList.add('hidden');
-                    sSetup.classList.remove('hidden');
-                }
-            } catch (err) { alert("Login failed: " + err.message); }
+                const result = await getRedirectResult(auth);
+                if (result && result.user) { handleUserLogin(result.user); return; }
+            } catch (err) { console.error(err); }
+
+            auth.onAuthStateChanged((user) => { if (user) { handleUserLogin(user); } });
         });
 
-        // Profile Lifecycle Registry Save Process
+        document.getElementById('btn-google-login').addEventListener('click', () => {
+            const provider = new GoogleAuthProvider();
+            signInWithRedirect(auth, provider);
+        });
+
+        async function handleUserLogin(user) {
+            currentUser = user;
+            const userSnapshot = await get(ref(db, `users_by_uid/${currentUser.uid}`));
+            if (userSnapshot.exists()) {
+                loadMainApplication(userSnapshot.val().username);
+            } else {
+                sAuth.classList.add('hidden');
+                sSetup.classList.remove('hidden');
+            }
+        }
+
         document.getElementById('btn-save-profile').addEventListener('click', async () => {
             const typedUsername = document.getElementById('setup-username').value.trim().toLowerCase();
             if(!typedUsername) return alert("Username required!");
 
             const usernameCheck = await get(ref(db, `usernames/${typedUsername}`));
-            if(usernameCheck.exists()) return alert("Username already taken by another member!");
+            if(usernameCheck.exists()) return alert("Username already taken!");
 
             await set(ref(db, `usernames/${typedUsername}`), { uid: currentUser.uid });
             await set(ref(db, `users_by_uid/${currentUser.uid}`), { username: typedUsername });
@@ -155,14 +143,12 @@
             loadMainApplication(typedUsername);
         });
 
-        // Search and Map Friends Engine
         document.getElementById('btn-search-user').addEventListener('click', async () => {
             const targetName = document.getElementById('search-username-input').value.trim().toLowerCase();
             const snapshot = await get(ref(db, `usernames/${targetName}`));
             if(!snapshot.exists()) return alert("User handle not found!");
             
-            const targetData = snapshot.val();
-            appendFriendRow(targetName, targetData.uid);
+            appendFriendRow(targetName, snapshot.val().uid);
             document.getElementById('search-username-input').value = "";
         });
 
@@ -180,7 +166,6 @@
             list.appendChild(row);
         }
 
-        // Initialize Chat Engine
         function loadMainApplication(uname) {
             document.getElementById('my-display-username').innerText = `@${uname}`;
             sAuth.classList.add('hidden'); sSetup.classList.add('hidden'); sApp.classList.remove('hidden');
@@ -189,3 +174,12 @@
 
         function initializeChatRoomStream() {
             const chatBox = document.getElementById('chat-box');
+            chatBox.innerHTML = ""; 
+            
+            onChildAdded(ref(db, `messages/${activeChatRoomId}`), (snapshot) => {
+                const data = snapshot.val();
+                const isMe = data.uid === currentUser.uid;
+                const msgElement = document.createElement('div');
+                msgElement.className = `message ${isMe ? 'sent' : 'received'}`;
+                msgElement.innerHTML = `
+                    <span style="font-size:0.75rem; display:block; color:var(--text-muted);">@${data.sender}</span>
