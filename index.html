@@ -1,10 +1,175 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Talkative</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talkactive • Cozy Messaging</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        :root {
+            --bg-main: #0f172a; --bg-chat: #1e293b; --accent: #38bdf8;
+            --text-main: #f8fafc; --text-muted: #94a3b8;
+            --bubble-sent: #0369a1; --bubble-rcvd: #334155;
+        }
+        body { display: flex; flex-direction: column; height: 100vh; background-color: var(--bg-main); color: var(--text-main); }
+        
+        /* Auth Screen Modals */
+        .screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 20px; padding: 20px; }
+        .hidden { display: none !important; }
+        .card { background: var(--bg-chat); padding: 30px; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; border: 1px solid #334155; }
+        
+        /* Header and Layout */
+        header { background-color: var(--bg-chat); padding: 15px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        .profile-badge { display: flex; align-items: center; gap: 10px; }
+        .avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
+        
+        /* Main UI Split View */
+        #main-app { display: flex; flex: 1; overflow: hidden; }
+        #sidebar { width: 300px; background: #111827; border-right: 1px solid #334155; display: flex; flex-direction: column; padding: 15px; gap: 15px; }
+        #chat-area { flex: 1; display: flex; flex-direction: column; }
+        
+        /* Interactive List Elements */
+        .search-box { display: flex; gap: 8px; }
+        .user-row { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .user-row:hover, .user-row.active { background: var(--bg-chat); }
+        
+        /* Messages & Image Rendering */
+        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .message { max-width: 75%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.5; word-wrap: break-word; }
+        .sent { background-color: var(--bubble-sent); align-self: flex-end; border-bottom-right-radius: 4px; }
+        .received { background-color: var(--bubble-rcvd); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .chat-img { max-width: 100%; max-height: 250px; border-radius: 8px; margin-top: 5px; display: block; }
+        
+        /* Controls and Buttons */
+        footer { display: flex; background-color: var(--bg-chat); padding: 15px; gap: 12px; align-items: center; border-top: 1px solid #334155; }
+        input, select { padding: 12px 16px; border: 1px solid #475569; border-radius: 25px; outline: none; background: var(--bg-main); color: var(--text-main); font-size: 0.95rem; }
+        input[type="text"] { flex: 1; }
+        button { background-color: var(--accent); color: var(--bg-main); border: none; padding: 12px 24px; border-radius: 25px; font-weight: bold; cursor: pointer; }
+        .secondary-btn { background: transparent; color: var(--text-main); border: 1px solid #475569; }
+        .file-label { cursor: pointer; color: var(--accent); padding: 0 10px; font-size: 1.5rem; }
+    </style>
 </head>
 <body>
-  <h1>Talkative</h1>
-  <p>WELCOME TO TALKATIVE.</p>
-</body>
-</html>
+
+    <!-- SCREEN 1: GOOGLE SIGN IN -->
+    <div id="screen-auth" class="screen">
+        <div class="card">
+            <h1 style="margin-bottom:10px;">✨ Talkactive</h1>
+            <p style="color:var(--text-muted); margin-bottom:25px;">Welcome to your cozy chat space.</p>
+            <button id="btn-google-login" style="width:100%;">Sign in with Google</button>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: USERNAME & PROFILE PICTURE PROMPT -->
+    <div id="screen-setup" class="screen hidden">
+        <div class="card">
+            <h2>Complete Profile</h2>
+            <p style="color:var(--text-muted); margin-bottom:20px;">Claim your unique chat handle.</p>
+            <div style="margin-bottom:15px; position:relative;">
+                <img id="setup-avatar-preview" src="https://placeholder.com" class="avatar" style="width:100px; height:100px; margin-bottom:10px;">
+                <br><label class="secondary-btn" style="padding:5px 15px; border-radius:15px; font-size:0.8rem; cursor:pointer;">
+                    Upload Photo <input type="file" id="setup-avatar-file" accept="image/*" style="display:none;">
+                </label>
+            </div>
+            <input type="text" id="setup-username" placeholder="Choose unique username..." style="width:100%; margin-bottom:15px;">
+            <button id="btn-save-profile" style="width:100%;">Enter Talkactive</button>
+        </div>
+    </div>
+
+    <!-- SCREEN 3: MAIN APPLICATION APPLICATION INTERFACE -->
+    <div id="screen-app" class="screen hidden" style="padding:0; height:100vh;">
+        <div style="width:100%; display:flex; flex-direction:column; height:100%;">
+            <header>
+                <h2>✨ Talkactive</h2>
+                <div class="profile-badge">
+                    <span id="my-display-username" style="font-weight:bold;"></span>
+                    <img id="my-display-avatar" src="" class="avatar">
+                </div>
+            </header>
+            
+            <div id="main-app">
+                <div id="sidebar">
+                    <h3>Find Friends</h3>
+                    <div class="search-box">
+                        <input type="text" id="search-username-input" placeholder="Search username...">
+                        <button id="btn-search-user">Add</button>
+                    </div>
+                    <div id="friends-list" style="flex:1; overflow-y:auto; margin-top:10px;">
+                        <!-- Connected friends fill in here -->
+                    </div>
+                </div>
+                <div id="chat-area">
+                    <div id="chat-box"><!-- Texts render dynamically --></div>
+                    <footer>
+                        <label class="file-label" title="Send Picture">
+                            🖼️ <input type="file" id="chat-image-file" accept="image/*" style="display:none;">
+                        </label>
+                        <input type="text" id="msg-input" placeholder="Whisper a cozy text...">
+                        <button id="send-btn">Send</button>
+                    </footer>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Modular Packages Injection -->
+    <script type="module">
+        import { initializeApp } from "https://gstatic.com";
+        import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://gstatic.com";
+        import { getDatabase, ref, set, get, push, onChildAdded } from "https://gstatic.com";
+        import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://gstatic.com";
+
+        // ⚠️ REPLACE THIS OBJECT INSTANTLY WITH YOUR COPIED APP CONFIGURATION KEYS
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_://firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_://firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_://appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+        const storage = getStorage(app);
+
+        let currentUser = null; 
+        let activeChatRoomId = "global_cozy_room"; // Fallback demo channel default
+
+        // DOM Element Registrations
+        const sAuth = document.getElementById('screen-auth'), sSetup = document.getElementById('screen-setup'), sApp = document.getElementById('screen-app');
+        const setupAvatarFile = document.getElementById('setup-avatar-file'), setupAvatarPreview = document.getElementById('setup-avatar-preview');
+
+        // Google Authentication Handle Trigger
+        document.getElementById('btn-google-login').addEventListener('click', async () => {
+            const provider = new GoogleAuthProvider();
+            try {
+                const result = await signInWithPopup(auth, provider);
+                currentUser = result.user;
+                
+                // Inspect whether account baseline settings exist in DB
+                const userSnapshot = await get(ref(db, `users_by_uid/${currentUser.uid}`));
+                if (userSnapshot.exists()) {
+                    loadMainApplication(userSnapshot.val().username, userSnapshot.val().avatarUrl);
+                } else {
+                    sAuth.classList.add('hidden');
+                    sSetup.classList.remove('hidden');
+                    if(currentUser.photoURL) setupAvatarPreview.src = currentUser.photoURL;
+                }
+            } catch (err) { alert("Login failed: " + err.message); }
+        });
+
+        // Setup File Handling Pipeline
+        let temporaryAvatarBlob = null;
+        setupAvatarFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(file) { temporaryAvatarBlob = file; setupAvatarPreview.src = URL.createObjectURL(file); }
+        });
+
+        // Profile Lifecycle Registry Save Process
+        document.getElementById('btn-save-profile').addEventListener('click', async () => {
+            const typedUsername = document.getElementById('setup-username').value.trim().toLowerCase();
+            if(!typedUsername) return alert("Username required!");
+
